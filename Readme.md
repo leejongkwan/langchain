@@ -11,3 +11,6 @@ python3 -m pip install -r requirements.txt
 ```
 
 자세한 방법은 책의 1.4절 '실습 준비'를 참고합니다.
+
+
+pip freeze > requirements.txt

@@ -1,31 +1,41 @@
-from langchain.chat_models import ChatOpenAI
-from langchain.output_parsers import PydanticOutputParser
-from langchain.schema import HumanMessage
-from pydantic import BaseModel, Field, validator
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+from langchain_core.output_parsers import PydanticOutputParser
+from pydantic import BaseModel, Field, field_validator  # ✅ field_validator 사용
 
-chat = ChatOpenAI()
+# OpenAI Chat 모델 초기화
+chat = ChatOpenAI(model="gpt-3.5-turbo")
 
-class Smartphone(BaseModel): #← Pydantic의 모델을 정의한다.
-    release_date: str = Field(description="스마트폰 출시일") #← Field를 사용해 설명을 추가
+# Pydantic 모델 정의
+class Smartphone(BaseModel):
+    release_date: str = Field(description="스마트폰 출시일")
     screen_inches: float = Field(description="스마트폰의 화면 크기(인치)")
     os_installed: str = Field(description="스마트폰에 설치된 OS")
     model_name: str = Field(description="스마트폰 모델명")
 
-    @validator("screen_inches") #← validator를 사용해 값을 검증
-    def validate_screen_inches(cls, field): #← 검증할 필드와 값을 validator의 인수로 전달
-        if field <= 0: #← screen_inches가 0 이하인 경우 에러를 반환
-            raise ValueError("Screen inches must be a positive number")
+    @field_validator("screen_inches")  # ✅ 새로운 문법
+    @classmethod
+    def validate_screen_inches(cls, field):
+        if field <= 0:
+            raise ValueError("화면 크기는 양수여야 합니다.")
         return field
 
-parser = PydanticOutputParser(pydantic_object=Smartphone) #← PydanticOutputParser를 SmartPhone 모델로 초기화
+# OutputParser 초기화
+parser = PydanticOutputParser(pydantic_object=Smartphone)
 
-result = chat([ #← Chat models에 HumanMessage를 전달해 문장을 생성
+# 프롬프트 메시지
+messages = [
     HumanMessage(content="안드로이드 스마트폰 1개를 꼽아주세요"),
     HumanMessage(content=parser.get_format_instructions())
-])
+]
 
-parsed_result = parser.parse(result.content) #← PydanticOutputParser를 사용해 문장을 파싱
+# 모델 실행
+response = chat.invoke(messages)
 
+# 결과 파싱
+parsed_result = parser.parse(response.content)
+
+# 출력
 print(f"모델명: {parsed_result.model_name}")
 print(f"화면 크기: {parsed_result.screen_inches}인치")
 print(f"OS: {parsed_result.os_installed}")

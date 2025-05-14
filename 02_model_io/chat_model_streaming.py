@@ -1,13 +1,18 @@
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import HumanMessage
 
+# 스트리밍 출력 핸들러 정의
+streaming_handler = StreamingStdOutCallbackHandler()
+
+# ChatOpenAI 인스턴스 생성 (스트리밍 활성화)
 chat = ChatOpenAI(
-    streaming=True,  #← streaming을 True로 설정하여 스트리밍 모드로 실행
-    callbacks=[
-        StreamingStdOutCallbackHandler()  #← StreamingStdOutCallbackHandler를 콜백으로 설정
-    ]
+    streaming=True,
+    callbacks=[streaming_handler],
+    model="gpt-3.5-turbo"  # 또는 "gpt-4"
 )
-resp = chat([ #← 요청 보내기
+
+# 메시지 전송 (스트리밍 출력)
+resp = chat.invoke([
     HumanMessage(content="맛있는 스테이크 굽는 법을 알려주세요")
 ])

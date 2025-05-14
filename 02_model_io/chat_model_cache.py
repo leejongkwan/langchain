@@ -1,26 +1,25 @@
-import time  #← 실행 시간을 측정하기 위해 time 모듈 가져오기
-import langchain
-from langchain.cache import InMemoryCache  #← InMemoryCache 가져오기
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import HumanMessage
+import time
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
+from langchain_core.globals import set_llm_cache
+from langchain_community.cache import InMemoryCache  # ✅ 경고 해결
 
-langchain.llm_cache = InMemoryCache() #← llm_cache에 InMemoryCache 설정
+# 캐시 설정
+set_llm_cache(InMemoryCache())
 
-chat = ChatOpenAI()
-start = time.time() #← 실행 시작 시간 기록
-result = chat([ #← 첫 번째 실행을 수행
-    HumanMessage(content="안녕하세요!")
-])
+# LLM 모델 정의
+chat = ChatOpenAI(model="gpt-3.5-turbo")
 
-end = time.time() #← 실행 종료 시간 기록
+# 첫 요청 (캐시 없음)
+start = time.time()
+result = chat.invoke([HumanMessage(content="안녕하세요!")])
+end = time.time()
 print(result.content)
-print(f"실행 시간: {end - start}초")
+print(f"첫 실행 시간: {end - start:.4f}초")
 
-start = time.time() #← 실행 시작 시간 기록
-result = chat([ #← 같은 내용으로 두 번째 실행을 함으로써 캐시가 활용되어 즉시 실행 완료됨
-    HumanMessage(content="안녕하세요!")
-])
-
-end = time.time() #← 실행 종료 시간 기록
+# 두 번째 요청 (캐시 활용됨)
+start = time.time()
+result = chat.invoke([HumanMessage(content="안녕하세요!")])
+end = time.time()
 print(result.content)
-print(f"실행 시간: {end - start}초")
+print(f"두 번째 실행 시간: {end - start:.4f}초")

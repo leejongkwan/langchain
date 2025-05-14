@@ -1,21 +1,23 @@
-from langchain import PromptTemplate
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import HumanMessage
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
+from langchain_core.messages import HumanMessage
 
-chat = ChatOpenAI(  #← 클라이언트 생성 및 chat에 저장
-    model="gpt-3.5-turbo",  #← 호출할 모델 지정
+# ChatOpenAI 클라이언트 생성
+chat = ChatOpenAI(model="gpt-3.5-turbo")
+
+# PromptTemplate 정의
+prompt = PromptTemplate(
+    template="{product}는 어느 회사에서 개발한 제품인가요?",
+    input_variables=["product"]
 )
 
-prompt = PromptTemplate(  #← PromptTemplate을 작성
-    template="{product}는 어느 회사에서 개발한 제품인가요？",  #← {product}라는 변수를 포함하는 프롬프트 작성하기
-    input_variables=[
-        "product"  #← product에 입력할 변수 지정
-    ]
-)
+# 프롬프트에 변수 적용
+formatted_prompt = prompt.format(product="아이폰")
 
-result = chat( #← 실행
-    [
-        HumanMessage(content=prompt.format(product="아이폰")),
-    ]
-)
-print(result.content)
+# 메시지 구성 및 실행
+response = chat.invoke([
+    HumanMessage(content=formatted_prompt)
+])
+
+# 출력
+print(response.content)
