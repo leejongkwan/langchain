@@ -1,28 +1,30 @@
-from langchain.document_loaders import PyMuPDFLoader
-from langchain.embeddings import OpenAIEmbeddings  #← OpenAIEmbeddings 가져오기
-from langchain.text_splitter import SpacyTextSplitter
-from langchain.vectorstores import Chroma  #← Chroma 가져오기
+from langchain_community.document_loaders import PyMuPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_chroma import Chroma
 
-loader = PyMuPDFLoader("./sample.pdf")
+# 1. PDF 로드
+loader = PyMuPDFLoader("./Azure Data and AI Architect Handbook.pdf")
 documents = loader.load()
 
-text_splitter = SpacyTextSplitter(
-    chunk_size=300, 
-    pipeline="ko_core_news_sm"
+# 2. 문서 분할 (Spacy → RecursiveCharacterTextSplitter로 대체)
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=300,
+    chunk_overlap=50
 )
 splitted_documents = text_splitter.split_documents(documents)
 
-embeddings = OpenAIEmbeddings( #← OpenAIEmbeddings를 초기화
-    model="text-embedding-ada-002" #← 모델명을 지정
+# 3. 임베딩 모델 초기화
+embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+
+# 4. Chroma 벡터스토어 초기화
+vectorstore = Chroma(
+    persist_directory="./.data",
+    embedding_function=embeddings,
+    collection_name="pdf_chunks"  # 명시적으로 컬렉션 지정 권장
 )
 
-database = Chroma(  #← Chroma를 초기화
-    persist_directory="./.data",  #← 영속화 데이터 저장 위치 지정
-    embedding_function=embeddings  #← 벡터화할 모델을 지정
-)
+# 5. 문서 추가
+vectorstore.add_documents(splitted_documents)
 
-database.add_documents(  #← 문서를 데이터베이스에 추가
-    splitted_documents,  #← 추가할 문서 지정
-)
-
-print("데이터베이스 생성이 완료되었습니다.") #← 완료 알림
+print("✅ 데이터베이스 생성이 완료되었습니다.")

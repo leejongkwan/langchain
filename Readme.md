@@ -14,3 +14,6 @@ python3 -m pip install -r requirements.txt
 
 
 pip freeze > requirements.txt
+
+
+chainlit run char_01.py

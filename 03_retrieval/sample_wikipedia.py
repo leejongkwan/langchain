@@ -1,16 +1,22 @@
-from langchain.retrievers import WikipediaRetriever
+from langchain_community.retrievers import WikipediaRetriever
 
-retriever = WikipediaRetriever(  #← WikipediaRetriever를 초기화
-    lang="ko",  #← Wikipedia의 언어를 지정
-)
-documents = retriever.get_relevant_documents( #← Wikipedia에서 관련 문서를 가져옴
-    "대형 언어 모델" #← 검색할 키워드를 지정
+# 1. WikipediaRetriever 초기화 (한국어 설정)
+retriever = WikipediaRetriever(
+    lang="ko",  # 한국어 위키백과에서 검색
 )
 
-print(f"검색 결과: {len(documents)}건") #← 검색 결과 건수를 표시
+# 2. 질문 정의
+query = "대형 언어 모델"
+
+# 3. 최신 방식: invoke()로 검색
+documents = retriever.invoke(query)
+
+# 4. 결과 출력
+print(f"🔍 검색 결과: {len(documents)}건")
 
 for document in documents:
     print("---------------검색한 메타데이터---------------")
-    print(document.metadata) #← 메타데이터를 표시
+    print(document.metadata)
+
     print("---------------검색한 텍스트---------------")
-    print(document.page_content[:100]) #← 텍스트의 첫 100글자를 표시
+    print(document.page_content[:100])  # 첫 100자만 표시

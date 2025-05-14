@@ -1,29 +1,38 @@
-from langchain.chains import RetrievalQA  #← RetrievalQA를 가져오기
-from langchain.chat_models import ChatOpenAI
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_chroma import Chroma
+from langchain.chains import RetrievalQA
+from langchain_core.documents import Document
 
+# 1. LLM 및 임베딩 모델 초기화
 chat = ChatOpenAI(model="gpt-3.5-turbo")
+embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
 
-embeddings = OpenAIEmbeddings(
-    model="text-embedding-ada-002"
+# 2. Chroma 로드
+vectorstore = Chroma(
+    persist_directory="./.data",
+    embedding_function=embeddings,
+    collection_name="pdf_chunks"  # 삽입 시 사용한 collection_name과 일치해야 함
 )
 
-database = Chroma(
-    persist_directory="./.data", 
-    embedding_function=embeddings
+# 3. Retriever 변환
+retriever = vectorstore.as_retriever()
+
+# 4. RetrievalQA 체인 구성
+qa_chain = RetrievalQA.from_llm(
+    llm=chat,
+    retriever=retriever,
+    return_source_documents=True
 )
 
-retriever = database.as_retriever() #← 데이터베이스를 Retriever로 변환
+# 5. 질의 실행
+query = "비행 자동차의 최고 속도를 알려주세요"
+result = qa_chain.invoke(query)
 
-qa = RetrievalQA.from_llm(  #← RetrievalQA를 초기화
-    llm=chat,  #← Chat models를 지정
-    retriever=retriever,  #← Retriever를 지정
-    return_source_documents=True  #← 응답에 원본 문서를 포함할지를 지정
-)
+# 6. 결과 출력
+print("🧠 답변:")
+print(result["result"])
 
-result = qa("비행 자동차의 최고 속도를 알려주세요")
-
-print(result["result"]) #← 응답을 표시
-
-print(result["source_documents"]) #← 원본 문서를 표시
+print("\n📄 참조 문서:")
+for doc in result["source_documents"]:
+    print(f"- {doc.metadata.get('source', '알 수 없음')}")
+    print(doc.page_content[:300], "...\n")

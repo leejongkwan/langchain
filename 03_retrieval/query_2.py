@@ -1,31 +1,28 @@
-from langchain.chat_models import ChatOpenAI  #← ChatOpenAI 가져오기
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.prompts import PromptTemplate  #← PromptTemplate 가져오기
-from langchain.schema import HumanMessage  #← HumanMessage 가져오기
-from langchain.vectorstores import Chroma
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_chroma import Chroma
+from langchain_core.prompts import PromptTemplate
+from langchain_core.messages import HumanMessage
 
-embeddings = OpenAIEmbeddings(
-    model="text-embedding-ada-002"
+# 1. 임베딩 및 DB 초기화
+embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+
+vectorstore = Chroma(
+    persist_directory="./.data",
+    embedding_function=embeddings,
+    collection_name="pdf_chunks"  # 삽입 시 사용한 이름과 동일하게
 )
 
-database = Chroma(
-    persist_directory="./.data", 
-    embedding_function=embeddings
-)
-
+# 2. 질의 정의 및 유사도 검색
 query = "비행 자동차의 최고 속도는?"
+documents = vectorstore.similarity_search(query)
 
-documents = database.similarity_search(query)
+# 3. 검색된 문서 문자열로 정리
+documents_string = "\n---------------------------\n".join(
+    doc.page_content for doc in documents
+)
 
-documents_string = "" #← 문서 내용을 저장할 변수를 초기화
-
-for document in documents:
-    documents_string += f"""
----------------------------
-{document.page_content}
-""" #← 문서 내용을 추가
-
-prompt = PromptTemplate( #← PromptTemplate를 초기화
+# 4. 프롬프트 템플릿 구성
+prompt = PromptTemplate(
     template="""문장을 바탕으로 질문에 답하세요.
 
 문장: 
@@ -33,15 +30,16 @@ prompt = PromptTemplate( #← PromptTemplate를 초기화
 
 질문: {query}
 """,
-    input_variables=["document","query"] #← 입력 변수를 지정
+    input_variables=["document", "query"]
 )
 
-chat = ChatOpenAI( #← ChatOpenAI를 초기화
-    model="gpt-3.5-turbo"
-)
+# 5. Chat 모델 생성
+chat = ChatOpenAI(model="gpt-3.5-turbo")
 
-result = chat([
+# 6. LLM 호출
+response = chat.invoke([
     HumanMessage(content=prompt.format(document=documents_string, query=query))
 ])
 
-print(result.content)
+# 7. 결과 출력
+print(response.content)

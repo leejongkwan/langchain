@@ -1,30 +1,37 @@
+from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
-from langchain.chat_models import ChatOpenAI
-from langchain.retrievers import WikipediaRetriever
+from langchain_community.retrievers import WikipediaRetriever
 
-chat = ChatOpenAI()
+# 1. LLM 초기화 (GPT-3.5-Turbo 기본)
+chat = ChatOpenAI(model="gpt-3.5-turbo")
 
-retriever = WikipediaRetriever(  #← WikipediaRetriever를 초기화
-    lang="ko",  #← Wikipedia의 언어를 지정
-    doc_content_chars_max=500,  #← 검색할 텍스트의 최대 글자수를 지정
-    top_k_results=2,  #← 검색 결과 중 상위 몇 건을 가져올지 지정
+# 2. Wikipedia 리트리버 설정
+retriever = WikipediaRetriever(
+    lang="ko",
+    doc_content_chars_max=500,
+    top_k_results=2
 )
 
-chain = RetrievalQA.from_llm( #← RetrievalQA를 초기화
-    llm=chat, #← 사용할 Chat models를 지정
-    retriever=retriever, #← 사용할 Retriever를 지정
-    return_source_documents=True, #← 정보를 가져온 원본 문서를 반환
+# 3. RetrievalQA 체인 구성
+qa_chain = RetrievalQA.from_llm(
+    llm=chat,
+    retriever=retriever,
+    return_source_documents=True
 )
 
-result = chain("소주란?") #← RetrievalQA를 실행
+# 4. 질문 실행
+query = "소주란?"
+result = qa_chain.invoke(query)  # ✅ 최신 방식: invoke
 
-source_documents = result["source_documents"] #← 정보 출처의 문서를 가져옴
+# 5. 결과 및 출처 출력
+source_documents = result["source_documents"]
 
-print(f"검색 결과: {len(source_documents)}건") #← 검색 결과 건수를 표시
+print(f"🔍 검색 결과: {len(source_documents)}건")
 for document in source_documents:
     print("---------------검색한 메타데이터---------------")
     print(document.metadata)
     print("---------------검색한 텍스트---------------")
     print(document.page_content[:100])
+
 print("---------------응답---------------")
-print(result["result"]) #← 응답을 표시
+print(result["result"])
