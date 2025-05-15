@@ -1,46 +1,47 @@
+from langchain_openai import ChatOpenAI
 from langchain.agents import AgentType, initialize_agent
-from langchain.agents.agent_toolkits import create_retriever_tool
-from langchain.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory  #←ConversationBufferMemory 가져오기
-from langchain.retrievers import WikipediaRetriever
+from langchain.memory import ConversationBufferMemory
+from langchain_community.retrievers import WikipediaRetriever
+from langchain.tools.retriever import create_retriever_tool  # 최신 위치에서 가져오기
 
+# 1. LLM 초기화
 chat = ChatOpenAI(
     temperature=0,
     model="gpt-3.5-turbo"
 )
 
-tools = []
-
-# WriteFileTool을 제거
-
+# 2. Retriever 정의 (Wikipedia)
 retriever = WikipediaRetriever(
     lang="ko",
     doc_content_chars_max=500,
     top_k_results=1
 )
 
-tools.append(
-    create_retriever_tool(  #←Retrievers를 사용하는 Tool을 생성
-        name="WikipediaRetriever",  #←Tool 이름
-        description="받은 단어에 대한 Wikipedia 기사를 검색할 수 있다",  #←Tool 설명
-        retriever=retriever,  #←Retrievers를 지정
-    )
+# 3. Retriever Tool 생성
+retriever_tool = create_retriever_tool(
+    retriever=retriever,
+    name="WikipediaRetriever",
+    description="입력된 단어에 대해 한국어 위키피디아에서 관련 문서를 검색합니다."
 )
 
-memory = ConversationBufferMemory(  #←ConversationBufferMemory를 초기화
-    memory_key="chat_history",  #←메모리 키를 설정
-    return_messages=True  #←메시지를 반환하도록 설정
+# 4. Memory 구성
+memory = ConversationBufferMemory(
+    memory_key="chat_history",
+    return_messages=True
 )
 
+# 5. Agent 초기화 (대화형 + Retriever tool + Memory)
 agent = initialize_agent(
-    tools,
-    chat,
-    agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,  #←Agent의 유형을 대화형으로 변경
-    memory=memory,  #←Memory를 지정
+    tools=[retriever_tool],
+    llm=chat,
+    agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
+    memory=memory,
     verbose=True
 )
 
-result = agent.run("스카치 위스키에 대해 Wikipedia에서 찾아보고 그 개요를 한국어로 개요를 정리하세요.") #←Wikipedia에서 찾아보라고 지시
-print(f"1차 실행 결과: {result}") #←실행 결과를 표시
-result_2 = agent.run("이전 지시를 다시 한번 실행하세요.") #←이전 지시를 다시 실행하도록 지시
-print(f"2차 실행 결과: {result_2}") #←실행 결과를 표시
+# 6. 실행
+result = agent.run("스카치 위스키에 대해 Wikipedia에서 찾아보고 그 개요를 한국어로 정리하세요.")
+print(f"1차 실행 결과:\n{result}")
+
+result_2 = agent.run("이전 지시를 다시 한번 실행하세요.")
+print(f"\n2차 실행 결과:\n{result_2}")

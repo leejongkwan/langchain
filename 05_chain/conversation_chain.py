@@ -1,12 +1,16 @@
+from langchain_openai import ChatOpenAI
 from langchain.chains import ConversationChain
-from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 
-chat = ChatOpenAI()
+# 1. 언어 모델 초기화
+chat = ChatOpenAI(model="gpt-3.5-turbo")
 
+# 2. 메모리 초기화
 memory = ConversationBufferMemory(return_messages=True)
 
-chain = ConversationChain( #← ConversationChain을 초기화
-    memory=memory, #← Memory 모듈을 지정
-    llm=chat, #← 언어 모델을 지정
+# 3. ConversationChain 구성
+chain = ConversationChain(
+    llm=chat,
+    memory=memory,
+    verbose=True  # optional: 내부 동작 로깅
 )

@@ -1,22 +1,17 @@
-from langchain import LLMChain, PromptTemplate  #← LLMChain 가져오기
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
 
-chat = ChatOpenAI(  
-    model="gpt-3.5-turbo",  
-)
+# 1. LLM 초기화
+chat = ChatOpenAI(model="gpt-3.5-turbo")
 
-prompt = PromptTemplate(  
-    template="{product}는 어느 회사에서 개발한 제품인가요?",  
-    input_variables=[
-        "product"  
-    ]
-)
+# 2. 프롬프트 템플릿 정의
+prompt = PromptTemplate.from_template("{product}는 어느 회사에서 개발한 제품인가요?")
 
-chain = LLMChain( #← LLMChain을 생성
-    llm=chat,
-    prompt=prompt,
-)
+# 3. RunnableSequence (프롬프트 → LLM)
+chain = prompt | chat
 
-result = chain.predict(product="iPhone") #← LLMChain을 실행
+# 4. 실행
+result = chain.invoke({"product": "iPhone"})
 
-print(result)
+# 5. 출력
+print(result.content)

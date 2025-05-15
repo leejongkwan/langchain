@@ -1,58 +1,61 @@
 import os
 import chainlit as cl
+from langchain_openai import ChatOpenAI
 from langchain.chains import ConversationChain
-from langchain.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory, RedisChatMessageHistory
-from langchain.schema import HumanMessage
+from langchain.memory import ConversationBufferMemory
+from langchain_community.chat_message_histories import RedisChatMessageHistory
+from langchain_core.messages import HumanMessage
 
-chat = ChatOpenAI(
-    model="gpt-3.5-turbo"
-)
+# 1. LLM 초기화
+chat = ChatOpenAI(model="gpt-3.5-turbo")
 
 @cl.on_chat_start
 async def on_chat_start():
     thread_id = None
-    while not thread_id: #← 스레드 ID가 입력될 때까지 반복
-        res = await cl.AskUserMessage(content="저는 대화의 맥락을 고려해 답변할 수 있는 채팅봇입니다. 스레드 ID를 입력하세요.", timeout=600).send() #← AskUserMessage를 사용해 스레드 ID 입력
-        if res:
-            thread_id = res['content']
 
-    history = RedisChatMessageHistory(  #← 새로 채팅이 시작될 때마다 초기화하도록 on_chat_start로 이동
-        session_id=thread_id,  #← 스레드 ID를 세션 ID로 지정
-        url=os.environ.get("REDIS_URL"),
+    while not thread_id:
+        res = await cl.AskUserMessage(
+            content="저는 대화의 맥락을 고려해 답변할 수 있는 채팅봇입니다. 스레드 ID를 입력하세요.",
+            timeout=600
+        ).send()
+
+        if res and res.get("content"):
+            thread_id = res["content"]
+
+    # 2. Redis 기반 메시지 기록
+    history = RedisChatMessageHistory(
+        session_id=thread_id,
+        url=os.environ.get("REDIS_URL", "redis://localhost:6379")  # 기본값 설정 가능
     )
 
-    memory = ConversationBufferMemory( #← 새로 채팅이 시작될 때마다 초기화하도록 on_chat_start로 이동
+    # 3. LangChain 메모리 구성
+    memory = ConversationBufferMemory(
         return_messages=True,
         chat_memory=history,
     )
 
-    chain = ConversationChain( #← 새로 채팅이 시작될 때마다 초기화하도록 on_chat_start로 이동
+    # 4. Conversation 체인 초기화
+    chain = ConversationChain(
         memory=memory,
         llm=chat,
+        verbose=True
     )
 
-    memory_message_result = chain.memory.load_memory_variables({}) #← 메모리 내용 가져오기
+    # 5. 기존 메시지 불러오기
+    messages = memory.chat_memory.messages
 
-    messages = memory_message_result['history']
+    for msg in messages:
+        await cl.Message(
+            author="User" if isinstance(msg, HumanMessage) else "ChatBot",
+            content=msg.content
+        ).send()
 
-    for message in messages:
-        if isinstance(message, HumanMessage): #← 사용자가 보낸 메시지인지 판단
-            await cl.Message( #← 사용자 메시지이면 authorUser를 지정해 송신
-                author="User",
-                content=f"{message.content}",
-            ).send()
-        else:
-            await cl.Message( #← AI의 메시지이면 ChatBot을 지정해 송신
-                author="ChatBot",
-                content=f"{message.content}",
-            ).send()
-    cl.user_session.set("chain", chain) #← 기록을 세션에 저장
+    # 6. 세션에 저장
+    cl.user_session.set("chain", chain)
 
 @cl.on_message
-async def on_message(message: str):
-    chain = cl.user_session.get("chain") #← 세션에서 기록을 가져오기
+async def on_message(message: cl.Message):
+    chain = cl.user_session.get("chain")
+    response = await chain.ainvoke(message.content)  # ✅ 비동기 invoke
 
-    result = chain(message)
-
-    await cl.Message(content=result["response"]).send()
+    await cl.Message(content=response["response"]).send()
